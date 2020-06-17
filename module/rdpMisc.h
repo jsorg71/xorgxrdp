@@ -47,6 +47,9 @@ crc_process_data(int crc, const void *data, int data_bytes);
 extern _X_EXPORT int
 crc_end(int crc);
 
+int
+adler32(const void *adata, int data_bytes);
+
 extern _X_EXPORT int
 rdpBitsPerPixel(int depth);
 extern _X_EXPORT int

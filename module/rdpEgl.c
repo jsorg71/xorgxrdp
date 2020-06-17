@@ -76,24 +76,21 @@ static const GLfloat g_vertices[] =
 
 static const GLchar g_vs[] =
 "\
-#version 330 core\n\
-layout (location = 0) in vec2 position;\n\
+attribute vec4 position;\n\
 void main(void)\n\
 {\n\
     gl_Position = vec4(position.xy, 0.0, 1.0);\n\
 }\n";
 static const GLchar g_fs_copy[] =
 "\
-#version 330 core\n\
 uniform sampler2D tex;\n\
 uniform vec2 tex_size;\n\
 void main()\n\
 {\n\
-    gl_FragColor = texture(tex, gl_FragCoord.xy / tex_size);\n\
+    gl_FragColor = texture2D(tex, gl_FragCoord.xy / tex_size);\n\
 }\n";
 static const GLchar g_fs_rfx_rgb_to_yuv[] =
 "\
-#version 330 core\n\
 uniform sampler2D tex;\n\
 uniform vec2 tex_size;\n\
 void main()\n\
@@ -107,7 +104,7 @@ void main()\n\
     ymath = vec4( 0.299000,  0.587000,  0.114000, 1.0);\n\
     umath = vec4(-0.168935, -0.331665,  0.500590, 1.0);\n\
     vmath = vec4( 0.499813, -0.418531, -0.081282, 1.0);\n\
-    pixel = texture(tex, gl_FragCoord.xy / tex_size);\n\
+    pixel = texture2D(tex, gl_FragCoord.xy / tex_size);\n\
     ymath = ymath * pixel;\n\
     umath = umath * pixel;\n\
     vmath = vmath * pixel;\n\
@@ -120,19 +117,19 @@ void main()\n\
 }\n";
 static const GLchar g_fs_rfx_yuv_to_yuvlp[] =
 "\
-#version 330 core\n\
 uniform sampler2D tex;\n\
 uniform vec2 tex_size;\n\
+#define MY_MOD(x, y) ((x) - (y) * ((x) / (y)))\n\
 vec4 getpixel(int x1, int y1, int offset)\n\
 {\n\
     int x;\n\
     int y;\n\
     vec2 xy;\n\
-    x = x1 + offset % 64;\n\
+    x = x1 + MY_MOD(offset, 64);\n\
     y = y1 + offset / 64;\n\
-    xy.x = x + 0.5;\n\
-    xy.y = y + 0.5;\n\
-    return texture(tex, xy / tex_size);\n\
+    xy.x = float(x) + 0.5;\n\
+    xy.y = float(y) + 0.5;\n\
+    return texture2D(tex, xy / tex_size);\n\
 }\n\
 void main()\n\
 {\n\
@@ -146,8 +143,8 @@ void main()\n\
     vec4 pixel1;\n\
     x = int(gl_FragCoord.x);\n\
     y = int(gl_FragCoord.y);\n\
-    x1 = x & ~63;\n\
-    y1 = y & ~63;\n\
+    x1 = x - MY_MOD(x, 64);\n\
+    y1 = y - MY_MOD(y, 64);\n\
     x2 = x - x1;\n\
     y2 = y - y1;\n\
     offset = y2 * 64 + x2;\n\
@@ -186,66 +183,19 @@ void main()\n\
 }\n";
 static const GLchar g_fs_rfx_crc[] =
 "\
-#version 330 core\n\
 uniform sampler2D tex;\n\
 uniform vec2 tex_size;\n\
-const int g_crc_table[256] = int[256](\n\
-    0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,\n\
-    0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,\n\
-    0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,\n\
-    0xf3b97148, 0x84be41de, 0x1adad47d, 0x6ddde4eb, 0xf4d4b551, 0x83d385c7,\n\
-    0x136c9856, 0x646ba8c0, 0xfd62f97a, 0x8a65c9ec, 0x14015c4f, 0x63066cd9,\n\
-    0xfa0f3d63, 0x8d080df5, 0x3b6e20c8, 0x4c69105e, 0xd56041e4, 0xa2677172,\n\
-    0x3c03e4d1, 0x4b04d447, 0xd20d85fd, 0xa50ab56b, 0x35b5a8fa, 0x42b2986c,\n\
-    0xdbbbc9d6, 0xacbcf940, 0x32d86ce3, 0x45df5c75, 0xdcd60dcf, 0xabd13d59,\n\
-    0x26d930ac, 0x51de003a, 0xc8d75180, 0xbfd06116, 0x21b4f4b5, 0x56b3c423,\n\
-    0xcfba9599, 0xb8bda50f, 0x2802b89e, 0x5f058808, 0xc60cd9b2, 0xb10be924,\n\
-    0x2f6f7c87, 0x58684c11, 0xc1611dab, 0xb6662d3d, 0x76dc4190, 0x01db7106,\n\
-    0x98d220bc, 0xefd5102a, 0x71b18589, 0x06b6b51f, 0x9fbfe4a5, 0xe8b8d433,\n\
-    0x7807c9a2, 0x0f00f934, 0x9609a88e, 0xe10e9818, 0x7f6a0dbb, 0x086d3d2d,\n\
-    0x91646c97, 0xe6635c01, 0x6b6b51f4, 0x1c6c6162, 0x856530d8, 0xf262004e,\n\
-    0x6c0695ed, 0x1b01a57b, 0x8208f4c1, 0xf50fc457, 0x65b0d9c6, 0x12b7e950,\n\
-    0x8bbeb8ea, 0xfcb9887c, 0x62dd1ddf, 0x15da2d49, 0x8cd37cf3, 0xfbd44c65,\n\
-    0x4db26158, 0x3ab551ce, 0xa3bc0074, 0xd4bb30e2, 0x4adfa541, 0x3dd895d7,\n\
-    0xa4d1c46d, 0xd3d6f4fb, 0x4369e96a, 0x346ed9fc, 0xad678846, 0xda60b8d0,\n\
-    0x44042d73, 0x33031de5, 0xaa0a4c5f, 0xdd0d7cc9, 0x5005713c, 0x270241aa,\n\
-    0xbe0b1010, 0xc90c2086, 0x5768b525, 0x206f85b3, 0xb966d409, 0xce61e49f,\n\
-    0x5edef90e, 0x29d9c998, 0xb0d09822, 0xc7d7a8b4, 0x59b33d17, 0x2eb40d81,\n\
-    0xb7bd5c3b, 0xc0ba6cad, 0xedb88320, 0x9abfb3b6, 0x03b6e20c, 0x74b1d29a,\n\
-    0xead54739, 0x9dd277af, 0x04db2615, 0x73dc1683, 0xe3630b12, 0x94643b84,\n\
-    0x0d6d6a3e, 0x7a6a5aa8, 0xe40ecf0b, 0x9309ff9d, 0x0a00ae27, 0x7d079eb1,\n\
-    0xf00f9344, 0x8708a3d2, 0x1e01f268, 0x6906c2fe, 0xf762575d, 0x806567cb,\n\
-    0x196c3671, 0x6e6b06e7, 0xfed41b76, 0x89d32be0, 0x10da7a5a, 0x67dd4acc,\n\
-    0xf9b9df6f, 0x8ebeeff9, 0x17b7be43, 0x60b08ed5, 0xd6d6a3e8, 0xa1d1937e,\n\
-    0x38d8c2c4, 0x4fdff252, 0xd1bb67f1, 0xa6bc5767, 0x3fb506dd, 0x48b2364b,\n\
-    0xd80d2bda, 0xaf0a1b4c, 0x36034af6, 0x41047a60, 0xdf60efc3, 0xa867df55,\n\
-    0x316e8eef, 0x4669be79, 0xcb61b38c, 0xbc66831a, 0x256fd2a0, 0x5268e236,\n\
-    0xcc0c7795, 0xbb0b4703, 0x220216b9, 0x5505262f, 0xc5ba3bbe, 0xb2bd0b28,\n\
-    0x2bb45a92, 0x5cb36a04, 0xc2d7ffa7, 0xb5d0cf31, 0x2cd99e8b, 0x5bdeae1d,\n\
-    0x9b64c2b0, 0xec63f226, 0x756aa39c, 0x026d930a, 0x9c0906a9, 0xeb0e363f,\n\
-    0x72076785, 0x05005713, 0x95bf4a82, 0xe2b87a14, 0x7bb12bae, 0x0cb61b38,\n\
-    0x92d28e9b, 0xe5d5be0d, 0x7cdcefb7, 0x0bdbdf21, 0x86d3d2d4, 0xf1d4e242,\n\
-    0x68ddb3f8, 0x1fda836e, 0x81be16cd, 0xf6b9265b, 0x6fb077e1, 0x18b74777,\n\
-    0x88085ae6, 0xff0f6a70, 0x66063bca, 0x11010b5c, 0x8f659eff, 0xf862ae69,\n\
-    0x616bffd3, 0x166ccf45, 0xa00ae278, 0xd70dd2ee, 0x4e048354, 0x3903b3c2,\n\
-    0xa7672661, 0xd06016f7, 0x4969474d, 0x3e6e77db, 0xaed16a4a, 0xd9d65adc,\n\
-    0x40df0b66, 0x37d83bf0, 0xa9bcae53, 0xdebb9ec5, 0x47b2cf7f, 0x30b5ffe9,\n\
-    0xbdbdf21c, 0xcabac28a, 0x53b39330, 0x24b4a3a6, 0xbad03605, 0xcdd70693,\n\
-    0x54de5729, 0x23d967bf, 0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94,\n\
-    0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d);\n\
-#define CRC_START(in_crc) (in_crc) = 0xFFFFFFFF\n\
-#define CRC_PASS(in_pixel, in_crc) (in_crc) = g_crc_table[((in_crc) ^ (in_pixel)) & 0xff] ^ ((in_crc) >> 8)\n\
-#define CRC_END(in_crc) (in_crc) = ((in_crc) ^ 0xFFFFFFFF)\n\
+#define MY_MOD(x, y) ((x) - (y) * ((x) / (y)))\n\
 vec4 getpixel(int x1, int y1, int offset)\n\
 {\n\
     int x;\n\
     int y;\n\
     vec2 xy;\n\
-    x = x1 + offset % 64;\n\
+    x = x1 + MY_MOD(offset, 64);\n\
     y = y1 + offset / 64;\n\
-    xy.x = x + 0.5;\n\
-    xy.y = y + 0.5;\n\
-    return texture(tex, xy / tex_size);\n\
+    xy.x = float(x) + 0.5;\n\
+    xy.y = float(y) + 0.5;\n\
+    return texture2D(tex, xy / tex_size);\n\
 }\n\
 void main()\n\
 {\n\
@@ -254,34 +204,40 @@ void main()\n\
     int x1;\n\
     int y1;\n\
     int index;\n\
-    int crc;\n\
     int red;\n\
     int grn;\n\
     int blu;\n\
     int alp;\n\
+    int a;\n\
+    int b;\n\
     vec4 pixel1;\n\
     x = int(gl_FragCoord.x);\n\
     y = int(gl_FragCoord.y);\n\
     x1 = x * 64;\n\
     y1 = y * 64;\n\
-    CRC_START(crc);\n\
+    a = 1;\n\
+    b = 0;\n\
     for (index = 0; index < 4096; index++)\n\
     {\n\
         pixel1 = getpixel(x1, y1, index);\n\
         blu = clamp(int(pixel1.b * 255.0), 0, 255);\n\
-        CRC_PASS(blu, crc);\n\
+        a = MY_MOD(a + blu, 65521);\n\
+        b = MY_MOD(b + a, 65521);\n\
         grn = clamp(int(pixel1.g * 255.0), 0, 255);\n\
-        CRC_PASS(grn, crc);\n\
+        a = MY_MOD(a + grn, 65521);\n\
+        b = MY_MOD(b + a, 65521);\n\
         red = clamp(int(pixel1.r * 255.0), 0, 255);\n\
-        CRC_PASS(red, crc);\n\
+        a = MY_MOD(a + red, 65521);\n\
+        b = MY_MOD(b + a, 65521);\n\
         alp = clamp(int(pixel1.a * 255.0), 0, 255);\n\
-        CRC_PASS(alp, crc);\n\
+        a = MY_MOD(a + alp, 65521);\n\
+        b = MY_MOD(b + a, 65521);\n\
     }\n\
-    CRC_END(crc);\n\
-    gl_FragColor = vec4(((crc >> 16) & 0xFF) / 255.0,\n\
-                        ((crc >>  8) & 0xFF) / 255.0,\n\
-                        ((crc >>  0) & 0xFF) / 255.0,\n\
-                        ((crc >> 24) & 0xFF) / 255.0);\n\
+    pixel1.a = float(b / 256) / 255.0;\n\
+    pixel1.r = float(MY_MOD(b, 256)) / 255.0;\n\
+    pixel1.g = float(a / 256) / 255.0;\n\
+    pixel1.b = float(MY_MOD(a, 256)) / 255.0;\n\
+    gl_FragColor = pixel1;\n\
 }\n";
 
 #define LOG_LEVEL 1
@@ -599,9 +555,10 @@ rdpEglOut(rdpClientCon *clientCon, struct rdp_egl *egl, RegionPtr in_reg,
                 /* check if the gpu calculated the crcs right */
                 glReadPixels(lx, ly, 64, 64, GL_BGRA,
                              GL_UNSIGNED_INT_8_8_8_8_REV, tile_dst);
-                crc = crc_start();
-                crc = crc_process_data(crc, tile_dst, 64 * 64 * 4);
-                crc = crc_end(crc);
+                //crc = crc_start();
+                //crc = crc_process_data(crc, tile_dst, 64 * 64 * 4);
+                //crc = crc_end(crc);
+                crc = adler32(tile_dst, 64 * 64 * 4);
                 if (crc != crcs[(ly / 64) * tile_extents_stride + (lx / 64)])
                 {
                     LLOGLN(0, ("rdpEglOut: error crc no match 0x%8.8x 0x%8.8x",

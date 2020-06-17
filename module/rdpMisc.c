@@ -133,6 +133,28 @@ crc_end(int crc)
     return crc;
 }
 
+#define MOD_ADLER 65521
+
+/******************************************************************************/
+int
+adler32(const void *adata, int data_bytes)
+{
+    const unsigned char *data;
+    unsigned int a;
+    unsigned int b;
+    int index;
+
+    data = (const unsigned char *) adata;
+    a = 1;
+    b = 0;
+    for (index = 0; index < data_bytes; index++)
+    {
+        a = (a + data[index]) % MOD_ADLER;
+        b = (b + a) % MOD_ADLER;
+    }
+    return (b << 16) | a;
+}
+
 /******************************************************************************/
 int
 rdpBitsPerPixel(int depth)
