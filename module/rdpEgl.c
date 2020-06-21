@@ -98,146 +98,107 @@ void main()\n\
     vec4 ymath;\n\
     vec4 umath;\n\
     vec4 vmath;\n\
-    vec4 pixel;\n\
-    vec4 pixel1;\n\
-    vec4 pixel2;\n\
+    vec4 rv;\n\
     ymath = vec4( 0.299000,  0.587000,  0.114000, 1.0);\n\
     umath = vec4(-0.168935, -0.331665,  0.500590, 1.0);\n\
     vmath = vec4( 0.499813, -0.418531, -0.081282, 1.0);\n\
-    pixel = texture2D(tex, gl_FragCoord.xy / tex_size);\n\
-    ymath = ymath * pixel;\n\
-    umath = umath * pixel;\n\
-    vmath = vmath * pixel;\n\
-    pixel1 = vec4(ymath.r + ymath.g + ymath.b,\n\
-                  umath.r + umath.g + umath.b + 0.5,\n\
-                  vmath.r + vmath.g + vmath.b + 0.5,\n\
-                  pixel.a);\n\
-    pixel2 = clamp(pixel1, 0.0, 1.0);\n\
-    gl_FragColor = pixel2;\n\
+    rv = texture2D(tex, gl_FragCoord.xy / tex_size);\n\
+    ymath = ymath * rv;\n\
+    umath = umath * rv;\n\
+    vmath = vmath * rv;\n\
+    rv = vec4(ymath.r + ymath.g + ymath.b,\n\
+              umath.r + umath.g + umath.b + 0.5,\n\
+              vmath.r + vmath.g + vmath.b + 0.5,\n\
+              rv.a);\n\
+    rv = clamp(rv, 0.0, 1.0);\n\
+    gl_FragColor = rv;\n\
 }\n";
 static const GLchar g_fs_rfx_yuv_to_yuvlp[] =
 "\
 uniform sampler2D tex;\n\
 uniform vec2 tex_size;\n\
-#define MY_MOD(x, y) ((x) - (y) * ((x) / (y)))\n\
-vec4 getpixel(int x1, int y1, int offset)\n\
-{\n\
-    int x;\n\
-    int y;\n\
-    vec2 xy;\n\
-    x = x1 + MY_MOD(offset, 64);\n\
-    y = y1 + offset / 64;\n\
-    xy.x = float(x) + 0.5;\n\
-    xy.y = float(y) + 0.5;\n\
-    return texture2D(tex, xy / tex_size);\n\
-}\n\
+#define PROCESS1(_field) offset4 = offset * 4.0;\
+    xy.x = aligned_xy.x + mod(offset4, 64.0);\
+    xy.y = aligned_xy.y + offset4 / 64.0;\
+    rv.b = texture2D(tex, xy / tex_size)._field; xy.x += 1.0;\
+    rv.g = texture2D(tex, xy / tex_size)._field; xy.x += 1.0;\
+    rv.r = texture2D(tex, xy / tex_size)._field; xy.x += 1.0;\
+    rv.a = texture2D(tex, xy / tex_size)._field;\n\
 void main()\n\
 {\n\
-    int x;\n\
-    int y;\n\
-    int x1;\n\
-    int y1;\n\
-    int x2;\n\
-    int y2;\n\
-    int offset;\n\
-    vec4 pixel1;\n\
-    x = int(gl_FragCoord.x);\n\
-    y = int(gl_FragCoord.y);\n\
-    x1 = x - MY_MOD(x, 64);\n\
-    y1 = y - MY_MOD(y, 64);\n\
-    x2 = x - x1;\n\
-    y2 = y - y1;\n\
-    offset = y2 * 64 + x2;\n\
-    if (offset < 1024)\n\
+    vec2 xy;\n\
+    vec2 aligned_xy;\n\
+    float offset;\n\
+    float offset4;\n\
+    vec4 rv;\n\
+    xy = gl_FragCoord.xy;\n\
+    aligned_xy = xy - mod(xy, 64.0);\n\
+    xy = xy - aligned_xy;\n\
+    xy = floor(xy);\n\
+    offset = xy.y * 64.0 + xy.x;\n\
+    if (offset < 2048.0)\n\
     {\n\
-        pixel1.b = getpixel(x1, y1, offset * 4 + 0).r;\n\
-        pixel1.g = getpixel(x1, y1, offset * 4 + 1).r;\n\
-        pixel1.r = getpixel(x1, y1, offset * 4 + 2).r;\n\
-        pixel1.a = getpixel(x1, y1, offset * 4 + 3).r;\n\
+        if (offset < 1024.0)\n\
+        {\n\
+            PROCESS1(r)\n\
+        }\n\
+        else\n\
+        {\n\
+            offset -= 1024.0;\n\
+            PROCESS1(g)\n\
+        }\n\
     }\n\
-    else if (offset < 2048)\n\
+    else if (offset < 3072.0)\n\
     {\n\
-        offset -= 1024;\n\
-        pixel1.b = getpixel(x1, y1, offset * 4 + 0).g;\n\
-        pixel1.g = getpixel(x1, y1, offset * 4 + 1).g;\n\
-        pixel1.r = getpixel(x1, y1, offset * 4 + 2).g;\n\
-        pixel1.a = getpixel(x1, y1, offset * 4 + 3).g;\n\
-    }\n\
-    else if (offset < 3072)\n\
-    {\n\
-        offset -= 2048;\n\
-        pixel1.b = getpixel(x1, y1, offset * 4 + 0).b;\n\
-        pixel1.g = getpixel(x1, y1, offset * 4 + 1).b;\n\
-        pixel1.r = getpixel(x1, y1, offset * 4 + 2).b;\n\
-        pixel1.a = getpixel(x1, y1, offset * 4 + 3).b;\n\
+        offset -= 2048.0;\n\
+        PROCESS1(b)\n\
     }\n\
     else\n\
     {\n\
-        offset -= 3072;\n\
-        pixel1.b = getpixel(x1, y1, offset * 4 + 0).a;\n\
-        pixel1.g = getpixel(x1, y1, offset * 4 + 1).a;\n\
-        pixel1.r = getpixel(x1, y1, offset * 4 + 2).a;\n\
-        pixel1.a = getpixel(x1, y1, offset * 4 + 3).a;\n\
+        offset -= 3072.0;\n\
+        PROCESS1(a)\n\
     }\n\
-    gl_FragColor = pixel1;\n\
+    gl_FragColor = rv;\n\
 }\n";
 static const GLchar g_fs_rfx_crc[] =
 "\
 uniform sampler2D tex;\n\
 uniform vec2 tex_size;\n\
-#define MY_MOD(x, y) ((x) - (y) * ((x) / (y)))\n\
-vec4 getpixel(int x1, int y1, int offset)\n\
-{\n\
-    int x;\n\
-    int y;\n\
-    vec2 xy;\n\
-    x = x1 + MY_MOD(offset, 64);\n\
-    y = y1 + offset / 64;\n\
-    xy.x = float(x) + 0.5;\n\
-    xy.y = float(y) + 0.5;\n\
-    return texture2D(tex, xy / tex_size);\n\
-}\n\
+#define PROCESS1 xy1 = xy + index;\
+    rv = texture2D(tex, xy1 / tex_size);\
+    rv = clamp(rv * 255.0, 0.0, 255.0);\
+    a = a + rv.b; b = b + a; a = a + rv.g; b = b + a;\
+    a = a + rv.r; b = b + a; a = a + rv.a; b = b + a;\
+    index.x += 1.0;\n\
 void main()\n\
 {\n\
-    int x;\n\
-    int y;\n\
-    int x1;\n\
-    int y1;\n\
-    int index;\n\
-    int red;\n\
-    int grn;\n\
-    int blu;\n\
-    int alp;\n\
-    int a;\n\
-    int b;\n\
-    vec4 pixel1;\n\
-    x = int(gl_FragCoord.x);\n\
-    y = int(gl_FragCoord.y);\n\
-    x1 = x * 64;\n\
-    y1 = y * 64;\n\
-    a = 1;\n\
-    b = 0;\n\
-    for (index = 0; index < 4096; index++)\n\
+    vec2 xy;\n\
+    vec2 xy1;\n\
+    vec2 index;\n\
+    float a;\n\
+    float b;\n\
+    vec4 rv;\n\
+    xy = floor(gl_FragCoord.xy) * 64.0;\n\
+    a = 1.0;\n\
+    b = 0.0;\n\
+    index.y = 0.5;\n\
+    while (index.y < 64.0)\n\
     {\n\
-        pixel1 = getpixel(x1, y1, index);\n\
-        blu = clamp(int(pixel1.b * 255.0), 0, 255);\n\
-        a = MY_MOD(a + blu, 65521);\n\
-        b = MY_MOD(b + a, 65521);\n\
-        grn = clamp(int(pixel1.g * 255.0), 0, 255);\n\
-        a = MY_MOD(a + grn, 65521);\n\
-        b = MY_MOD(b + a, 65521);\n\
-        red = clamp(int(pixel1.r * 255.0), 0, 255);\n\
-        a = MY_MOD(a + red, 65521);\n\
-        b = MY_MOD(b + a, 65521);\n\
-        alp = clamp(int(pixel1.a * 255.0), 0, 255);\n\
-        a = MY_MOD(a + alp, 65521);\n\
-        b = MY_MOD(b + a, 65521);\n\
+        index.x = 0.5;\n\
+        while (index.x < 64.0)\n\
+        {\n\
+            PROCESS1 PROCESS1 PROCESS1 PROCESS1\n\
+            PROCESS1 PROCESS1 PROCESS1 PROCESS1\n\
+            a = mod(a, 65521.0);\n\
+            b = mod(b, 65521.0);\n\
+        }\n\
+        index.y += 1.0;\n\
     }\n\
-    pixel1.a = float(b / 256) / 255.0;\n\
-    pixel1.r = float(MY_MOD(b, 256)) / 255.0;\n\
-    pixel1.g = float(a / 256) / 255.0;\n\
-    pixel1.b = float(MY_MOD(a, 256)) / 255.0;\n\
-    gl_FragColor = pixel1;\n\
+    rv.a = floor(b / 256.0) / 255.0;\n\
+    rv.r = mod(b, 256.0) / 255.0;\n\
+    rv.g = floor(a / 256.0) / 255.0;\n\
+    rv.b = mod(a, 256.0) / 255.0;\n\
+    gl_FragColor = rv;\n\
 }\n";
 
 #define LOG_LEVEL 1
