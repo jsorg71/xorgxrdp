@@ -1305,6 +1305,63 @@ copy_vmem(rdpPtr dev, RegionPtr in_reg)
 }
 #endif
 
+
+/******************************************************************************/
+static int
+copy_vmem_nvidia(rdpPtr dev, RegionPtr in_reg)
+{
+    PixmapPtr hwPixmap;
+    PixmapPtr swPixmap;
+    BoxPtr pbox;
+    ScreenPtr pScreen;
+    GCPtr copyGC;
+    ChangeGCVal tmpval[1];
+    int count;
+    int index;
+    int left;
+    int top;
+    int width;
+    int height;
+    char pix1[16];
+
+    /* copy the dirty area from the screen hw pixmap to a sw pixmap
+       this should do a dma */
+    pScreen = dev->pScreen;
+    hwPixmap = pScreen->GetScreenPixmap(pScreen);
+    swPixmap = dev->screenSwPixmap;
+    copyGC = GetScratchGC(dev->depth, pScreen);
+    if (copyGC != NULL)
+    {
+        tmpval[0].val = GXcopy;
+        ChangeGC(NullClient, copyGC, GCFunction, tmpval);
+        ValidateGC(&(hwPixmap->drawable), copyGC);
+        count = REGION_NUM_RECTS(in_reg);
+        pbox = REGION_RECTS(in_reg);
+        for (index = 0; index < count; index++)
+        {
+            left = pbox[index].x1;
+            top = pbox[index].y1;
+            width = pbox[index].x2 - pbox[index].x1;
+            height = pbox[index].y2 - pbox[index].y1;
+            if ((width > 0) && (height > 0))
+            {
+                copyGC->ops->CopyArea(&(hwPixmap->drawable),
+                                      &(swPixmap->drawable),
+                                      copyGC, left, top,
+                                      width, height, left, top);
+            }
+        }
+        FreeScratchGC(copyGC);
+    }
+    else
+    {
+        return 1;
+    }
+    pScreen->GetImage(&(swPixmap->drawable), 0, 0, 1, 1, ZPixmap,
+                      0xffffffff, pix1);
+    return 0;
+}
+
 /**
  * Copy an array of rectangles from one memory area to another
  *****************************************************************************/
@@ -1326,6 +1383,10 @@ rdpCapture(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
         }
         copy_vmem(clientCon->dev, in_reg);
 #endif
+    }
+    if (clientCon->dev->nvidia)
+    {
+        copy_vmem_nvidia(clientCon->dev, in_reg);
     }
     switch (mode)
     {

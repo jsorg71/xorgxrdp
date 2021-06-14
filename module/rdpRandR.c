@@ -530,6 +530,10 @@ rdpRRSetRdpOutputs(rdpPtr dev)
     pRRScrPriv = rrGetScrPriv(dev->pScreen);
     LLOGLN(0, ("rdpRRSetRdpOutputs: numCrtcs %d numOutputs %d monitorCount %d",
            pRRScrPriv->numCrtcs, pRRScrPriv->numOutputs, dev->monitorCount));
+    if (dev->nvidia)
+    {
+        return 0;
+    }
     if (dev->monitorCount <= 0)
     {
         left = 0;
