@@ -43,9 +43,9 @@ mode ids    33      48
 #define LRRNumberRequests               32 /* 1.3 */
 #define LRRMaxCrtcs                     16
 #define LRRMaxOutputs                   16
-#define LRRMaxOutputNameLength          16
+#define LRRMaxOutputNameLength          32
 #define LRRMaxModes                     16
-#define LRRMaxModesNameLength           16
+#define LRRMaxModesNameLength           32
 #define LRRCrtcStart                    1
 #define LRROutputStart                  17
 #define LRRModeStart                    33
@@ -1326,8 +1326,8 @@ rdpLRRSetRdpOutputs(rdpPtr dev)
         {
             g_crtcs[index].x = dev->minfo[index].left;
             g_crtcs[index].y = dev->minfo[index].top;
-            width = dev->minfo[index].right - dev->minfo[index].left;
-            height = dev->minfo[index].bottom - dev->minfo[index].top;
+            width = dev->minfo[index].right - dev->minfo[index].left + 1;
+            height = dev->minfo[index].bottom - dev->minfo[index].top + 1;
             g_crtcs[index].width = width;
             g_crtcs[index].height = height;
             g_modes[index].width = width;

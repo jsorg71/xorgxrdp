@@ -810,7 +810,8 @@ rdpCopyBox_a8r8g8b8_to_yuv444_709fr(rdpClientCon *clientCon,
 /******************************************************************************/
 static Bool
 rdpCopyBoxList(rdpClientCon *clientCon, PixmapPtr dstPixmap,
-               BoxPtr out_rects, int num_out_rects)
+               BoxPtr out_rects, int num_out_rects,
+               int mon_left, int mon_top)
 {
     PixmapPtr hwPixmap;
     BoxPtr pbox;
@@ -852,7 +853,9 @@ rdpCopyBoxList(rdpClientCon *clientCon, PixmapPtr dstPixmap,
             copyGC->ops->CopyArea(&(hwPixmap->drawable),
                                     &(dstPixmap->drawable),
                                     copyGC, left, top,
-                                    width, height, left, top);
+                                    width, height,
+                                    left - mon_left,
+                                    top - mon_top);
         }
     }
     FreeScratchGC(copyGC);
@@ -921,7 +924,7 @@ rdpCapture0(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
     {
         /* copy vmem to smem */
         if (!rdpCopyBoxList(clientCon, clientCon->dev->screenSwPixmap,
-                            *out_rects, *num_out_rects))
+                            *out_rects, *num_out_rects, id->left, id->top))
         {
             return FALSE;
         }
@@ -1077,7 +1080,7 @@ rdpCapture1(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
     {
         /* copy vmem to smem */
         if (!rdpCopyBoxList(clientCon, clientCon->dev->screenSwPixmap,
-                            *out_rects, *num_out_rects))
+                            *out_rects, *num_out_rects, id->left, id->top))
         {
             return FALSE;
         }
@@ -1171,7 +1174,8 @@ rdpCapture2(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
     {
         /* copy vmem to smem */
         if (!rdpCopyBoxList(clientCon, clientCon->dev->screenSwPixmap,
-                            REGION_RECTS(in_reg), REGION_NUM_RECTS(in_reg)))
+                            REGION_RECTS(in_reg), REGION_NUM_RECTS(in_reg),
+                            id->left, id->top))
         {
             return FALSE;
         }
@@ -1327,6 +1331,7 @@ rdpCapture3(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
     int src_stride;
     int dst_stride;
     int dst_format;
+    int monitor_index;
 
     LLOGLN(10, ("rdpCapture3:"));
 
@@ -1381,11 +1386,13 @@ rdpCapture3(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
     *out_rects = lout_rects;
     *num_out_rects = num_rects;
 
-    if (clientCon->helperPixmaps[0] != NULL)
+    monitor_index = (id->flags >> 28) & 0xF;
+    if (clientCon->helperPixmaps[monitor_index] != NULL)
     {
         /* copy vmem to vmem */
-        rv = rdpCopyBoxList(clientCon, clientCon->helperPixmaps[0],
-                            *out_rects, *num_out_rects);
+        rv = rdpCopyBoxList(clientCon,
+                            clientCon->helperPixmaps[monitor_index],
+                            *out_rects, *num_out_rects, id->left, id->top);
         id->flags |= 1;
         return rv;
         /* helper will do the rest */
@@ -1394,7 +1401,7 @@ rdpCapture3(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
     {
         /* copy vmem to smem */
         rv = rdpCopyBoxList(clientCon, clientCon->dev->screenSwPixmap,
-                            *out_rects, *num_out_rects);
+                            *out_rects, *num_out_rects, id->left, id->top);
     }
 
     src = id->pixels;
@@ -1465,10 +1472,13 @@ rdpCapture(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
             return rdpCapture0(clientCon, in_reg, out_rects, num_out_rects, id);
         case 1:
             return rdpCapture1(clientCon, in_reg, out_rects, num_out_rects, id);
-        case 2:
-            /* used for remotefx capture */
+        case 2: /* surface command RFX */
+            /* FALLTHROUGH */
+        case 4: /* GFX progressive */
             return rdpCapture2(clientCon, in_reg, out_rects, num_out_rects, id);
-        case 3:
+        case 3: /* surface command h264 */
+            /* FALLTHROUGH */
+        case 5: /* GFX h264 */
             /* used for even align capture */
             return rdpCapture3(clientCon, in_reg, out_rects, num_out_rects, id);
         default:

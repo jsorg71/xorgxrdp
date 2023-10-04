@@ -102,4 +102,4 @@ rdpMisc.c rdpReg.c rdpComposite.c rdpGlyphs.c rdpPixmap.c rdpInput.c \
 rdpClientCon.c rdpCapture.c rdpTrapezoids.c rdpTriangles.c \
 rdpCompositeRects.c rdpXv.c rdpSimd.c $(EXTRA_SOURCES)
 
-libxorgxrdp_la_LIBADD = $(ASMLIB) $(EGLLIB)
+libxorgxrdp_la_LIBADD = $(ASMLIB) $(EGLLIB) -lrt

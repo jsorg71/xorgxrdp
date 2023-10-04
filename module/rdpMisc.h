@@ -97,7 +97,15 @@ extern _X_EXPORT const char *
 g_socket_dir(void);
 extern _X_EXPORT void
 g_hexdump(const void *p, long len);
-
+extern _X_EXPORT int
+g_sck_send_fd_set(int sck, const void *ptr, unsigned int len,
+                  int fds[], unsigned int fdcount);
+extern _X_EXPORT int
+g_alloc_shm_map_fd(void **addr, int *fd, size_t size);
+extern _X_EXPORT int
+g_alloc_map_fd(void **addr, int *fd, size_t size);
+extern _X_EXPORT void
+g_free_unmap_fd(void *addr, int fd, size_t size);
 
 /* glib-style memory allocation macros */
 #define g_new(struct_type, n_structs) \
@@ -201,6 +209,14 @@ do {                                       \
     *((s)->p) = (unsigned char)((v) >> 0); \
     (s)->p++;                              \
 } while (0)
+
+/******************************************************************************/
+#define out_uint8s(s, n) do \
+    { \
+        g_memset((s)->p, 0, (n)); \
+        (s)->p += (n); \
+    } while (0)
+
 
 /******************************************************************************/
 #if defined(B_ENDIAN) || defined(NEED_ALIGN)

@@ -126,6 +126,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct image_data
 {
+    int left;
+    int top;
     int width;
     int height;
     int bpp;
@@ -134,7 +136,8 @@ struct image_data
     int flags;
     uint8_t *pixels;
     uint8_t *shmem_pixels;
-    int shmem_id;
+    int shmem_fd;
+    int shmem_bytes;
     int shmem_offset;
     int shmem_lineBytes;
 };
@@ -295,7 +298,6 @@ struct _rdpRec
     int sendUpdateScheduled; /* boolean */
     OsTimerPtr sendUpdateTimer;
 
-    int do_dirty_os; /* boolean */
     int do_dirty_ons; /* boolean */
     int disconnect_scheduled; /* boolean */
     int do_kill_disconnected; /* boolean */
