@@ -55,9 +55,8 @@ Client connection to xrdp
 
 #if defined(XORGXRDP_LRANDR)
 #include "rdpLRandR.h"
-#else
-#include "rdpRandR.h"
 #endif
+#include "rdpRandR.h"
 
 #define LOG_LEVEL 1
 #define LLOGLN(_level, _args) \
@@ -849,12 +848,23 @@ rdpClientConProcessScreenSizeMsg(rdpPtr dev, rdpClientCon *clientCon,
     if ((dev->width != width) || (dev->height != height))
     {
 #if defined(XORGXRDP_LRANDR)
-        /* even though we are not using the built in randr, we still need
-         * to call this so driver can setup */
-        ok = RRScreenSizeSet(dev->pScreen, width, height, mmwidth, mmheight);
-        LLOGLN(0, ("rdpClientConProcessScreenSizeMsg: RRScreenSizeSet ok=[%d]", ok));
-        ok = rdpLRRScreenSizeSet(dev, width, height, mmwidth, mmheight);
-        LLOGLN(0, ("rdpClientConProcessScreenSizeMsg: LRRScreenSizeSet ok=[%d]", ok));
+        if (dev->nvidia)
+        {
+            /* even though we are not using the built in randr, we still need
+            * to call this so driver can setup */
+            ok = RRScreenSizeSet(dev->pScreen, width, height, mmwidth, mmheight);
+            LLOGLN(0, ("rdpClientConProcessScreenSizeMsg: RRScreenSizeSet ok=[%d]", ok));
+            ok = rdpLRRScreenSizeSet(dev, width, height, mmwidth, mmheight);
+            LLOGLN(0, ("rdpClientConProcessScreenSizeMsg: LRRScreenSizeSet ok=[%d]", ok));
+        }
+        else
+        {
+            dev->allow_screen_resize = 1;
+            ok = RRScreenSizeSet(dev->pScreen, width, height, mmwidth, mmheight);
+            dev->allow_screen_resize = 0;
+            LLOGLN(0, ("rdpClientConProcessScreenSizeMsg: RRScreenSizeSet ok=[%d]", ok));
+            RRTellChanged(dev->pScreen);
+        }
 #else
         dev->allow_screen_resize = 1;
         ok = RRScreenSizeSet(dev->pScreen, width, height, mmwidth, mmheight);
@@ -1297,7 +1307,15 @@ rdpClientConProcessMsgClientInfo(rdpPtr dev, rdpClientCon *clientCon)
                    dev->minfo[index].bottom));
         }
 #if defined(XORGXRDP_LRANDR)
-        rdpLRRSetRdpOutputs(dev);
+        if (dev->nvidia)
+        {
+            rdpLRRSetRdpOutputs(dev);
+        }
+        else
+        {
+            rdpRRSetRdpOutputs(dev);
+            RRTellChanged(dev->pScreen);
+        }
 #else
         rdpRRSetRdpOutputs(dev);
         RRTellChanged(dev->pScreen);
@@ -1310,7 +1328,15 @@ rdpClientConProcessMsgClientInfo(rdpPtr dev, rdpClientCon *clientCon)
         dev->doMultimon = 0;
         dev->monitorCount = 0;
 #if defined(XORGXRDP_LRANDR)
-        rdpLRRSetRdpOutputs(dev);
+        if (dev->nvidia)
+        {
+            rdpLRRSetRdpOutputs(dev);
+        }
+        else
+        {
+            rdpRRSetRdpOutputs(dev);
+            RRTellChanged(dev->pScreen);
+        }
 #else
         rdpRRSetRdpOutputs(dev);
         RRTellChanged(dev->pScreen);
