@@ -1407,7 +1407,7 @@ rdpClientConProcessMsgClientRegion(rdpPtr dev, rdpClientCon *clientCon)
            box.x1, box.y1, box.x2, box.y2));
     rdpRegionSubtract(clientCon->shmRegion, clientCon->shmRegion, &reg);
     rdpRegionUninit(&reg);
-
+    rdpScheduleDeferredUpdate(clientCon, FALSE);
     return 0;
 }
 
@@ -1426,6 +1426,7 @@ rdpClientConProcessMsgClientRegionEx(rdpPtr dev, rdpClientCon *clientCon)
     LLOGLN(10, ("rdpClientConProcessMsgClientRegionEx: flags 0x%8.8x", flags));
     LLOGLN(10, ("rdpClientConProcessMsgClientRegionEx: rect_id %d "
            "rect_id_ack %d", clientCon->rect_id, clientCon->rect_id_ack));
+    rdpScheduleDeferredUpdate(clientCon, FALSE);
     return 0;
 }
 
@@ -2800,7 +2801,6 @@ rdpDeferredUpdateCallback(OsTimerPtr timer, CARD32 now, pointer arg)
     LLOGLN(10, ("rdpDeferredUpdateCallback:"));
     clientCon = (rdpClientCon *) arg;
     clientCon->updateScheduled = FALSE;
-    clientCon->lastUpdateTime = now;
     if (clientCon->suppress_output)
     {
         LLOGLN(10, ("rdpDeferredUpdateCallback: suppress_output set"));
@@ -2817,10 +2817,6 @@ rdpDeferredUpdateCallback(OsTimerPtr timer, CARD32 now, pointer arg)
         /* do not allow captures until we have the client_info */
         clientCon->client_info.size == 0)
     {
-        LLOGLN(10, ("rdpDeferredUpdateCallback: reschedule rect_id %d "
-               "rect_id_ack %d",
-               clientCon->rect_id, clientCon->rect_id_ack));
-        rdpScheduleDeferredUpdate(clientCon, FALSE);
         return 0;
     }
     LLOGLN(10, ("rdpDeferredUpdateCallback: sending"));
@@ -2931,11 +2927,9 @@ rdpScheduleDeferredUpdate(rdpClientCon *clientCon, Bool can_call_now)
     uint32_t msToWait;
     uint32_t minNextUpdateTime;
 
-    if (clientCon->updateRetries > UPDATE_RETRY_TIMEOUT) {
-        LLOGLN(10, ("rdpScheduleDeferredUpdate: clientCon->updateRetries is %d"
-                    " and has exceeded the timeout of %d retries."
-                    " Overriding rect_id_ack to INT_MAX.", clientCon->updateRetries, UPDATE_RETRY_TIMEOUT));
-        clientCon->rect_id_ack = INT_MAX;
+    if (clientCon->updateScheduled)
+    {
+        return;
     }
 
     curTime = (uint32_t) GetTimeInMillis();
@@ -2977,10 +2971,7 @@ rdpClientConAddDirtyScreenReg(rdpPtr dev, rdpClientCon *clientCon,
 {
     LLOGLN(10, ("rdpClientConAddDirtyScreenReg:"));
     rdpRegionUnion(clientCon->dirtyRegion, clientCon->dirtyRegion, reg);
-    if (clientCon->updateScheduled == FALSE)
-    {
-        rdpScheduleDeferredUpdate(clientCon, TRUE);
-    }
+    rdpScheduleDeferredUpdate(clientCon, FALSE);
     return 0;
 }
 
