@@ -297,6 +297,7 @@ struct _rdpRec
 
     copy_box_proc a8r8g8b8_to_a8b8g8r8_box;
     copy_box_dst2_proc a8r8g8b8_to_nv12_box;
+    copy_box_proc a8r8g8b8_to_yuvalp_box;
 
     /* multimon */
     struct monitor_info minfo[16]; /* client monitor data */
