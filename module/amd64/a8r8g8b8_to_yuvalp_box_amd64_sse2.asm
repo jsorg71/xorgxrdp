@@ -109,7 +109,7 @@ loop1:
     packssdw xmm2, xmm5         ; xmm2 = 8 greens
     packssdw xmm3, xmm6         ; xmm3 = 8 reds
 
-    ; _Y = (( 77 * _R + 150 * _G +  29 * _B + 128) >> 8);
+    ; _Y = (77 * _R + 150 * _G + 29 * _B) >> 8;
     movdqa xmm4, xmm1           ; blue
     movdqa xmm5, xmm2           ; green
     movdqa xmm6, xmm3           ; red
@@ -118,12 +118,11 @@ loop1:
     pmullw xmm6, [lsym(cw77)]
     paddw xmm4, xmm5
     paddw xmm4, xmm6
-    paddw xmm4, [lsym(cw128)]
     psrlw xmm4, 8
     packuswb xmm4, xmm7
     movq [rdi], xmm4            ; out 8 bytes yyyyyyyy
 
-    ; _U = ((-43 * _R -  85 * _G + 128 * _B + 128) >> 8) + 128;
+    ; _U = ((-43 * _R - 85 * _G + 128 * _B) >> 8) + 128;
     movdqa xmm4, xmm1           ; blue
     movdqa xmm5, xmm2           ; green
     movdqa xmm6, xmm3           ; red
@@ -132,13 +131,12 @@ loop1:
     pmullw xmm6, [lsym(cw43)]
     psubw xmm4, xmm5
     psubw xmm4, xmm6
-    paddw xmm4, [lsym(cw128)]
     psraw xmm4, 8
     paddw xmm4, [lsym(cw128)]
     packuswb xmm4, xmm7
     movq [rdi + 1 * 64 * 64], xmm4  ; out 8 bytes uuuuuuuu
 
-    ; _V = ((128 * _R - 107 * _G -  21 * _B + 128) >> 8) + 128;
+    ; _V = ((128 * _R - 107 * _G -  21 * _B) >> 8) + 128;
     movdqa xmm6, xmm1           ; blue
     movdqa xmm5, xmm2           ; green
     movdqa xmm4, xmm3           ; red
@@ -147,7 +145,6 @@ loop1:
     pmullw xmm6, [lsym(cw21)]
     psubw xmm4, xmm5
     psubw xmm4, xmm6
-    paddw xmm4, [lsym(cw128)]
     psraw xmm4, 8
     paddw xmm4, [lsym(cw128)]
     packuswb xmm4, xmm7
