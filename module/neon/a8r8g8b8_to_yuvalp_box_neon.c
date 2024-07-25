@@ -46,7 +46,7 @@ const int16x8_t g_cw21  = {  21,  21,  21,  21,  21,  21,  21,  21 };
    address s8 should be aligned on 16 bytes, will be slower if not
    width must be multiple of 8 and > 0
    height must be > 0 */
-void
+int
 a8r8g8b8_to_yuvalp_box_neon(const uint8_t *s8, int src_stride,
                             uint8_t *d8, int dst_stride,
                             int width, int height)
