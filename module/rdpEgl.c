@@ -58,6 +58,11 @@ EGL
 #define LLOGLN(_level, _args) \
     do { if (_level < LOG_LEVEL) { ErrorF _args ; ErrorF("\n"); } } while (0)
 
+#define SHADER_INDEX_COPY       0
+#define SHADER_INDEX_RGB2YUV    1
+#define SHADER_INDEX_YUV2YUVLP  2
+#define SHADER_INDEX_CRC        3
+
 struct rdp_egl
 {
     GLuint quad_vao[1];
@@ -201,13 +206,12 @@ void main()\n\
     vec4 sum_pixel;\n\
     x = floor(gl_FragCoord.x) * 64.0;\n\
     y = floor(gl_FragCoord.y) * 64.0;\n\
-    sum_pixel = vec4(1.0, 1.0, 1.0, 1.0);\n\
-    for (index = 0.0; index + 0.5 < 64.0; index += 1.0)\n\
+    for (index = 0.5; index < 64.0; index += 1.0)\n\
     {\n\
-        xy.y = y + index + 0.5;\n\
-        for (jndex = 0.0; jndex + 0.5 < 64.0; jndex += 1.0)\n\
+        xy.y = y + index;\n\
+        for (jndex = 0.5; jndex < 64.0; jndex += 1.0)\n\
         {\n\
-            xy.x = x + jndex + 0.5;\n\
+            xy.x = x + jndex;\n\
             tmp_pixel = texture2D(tex, xy / tex_size);\n\
             tmp_pixel = tmp_pixel * 255.0;\n\
             tmp_pixel = floor(clamp(tmp_pixel, 0.0, 255.0));\n\
@@ -248,17 +252,70 @@ alder32(const void *data, int data_bytes)
 #endif
 
 /******************************************************************************/
+static int
+rdpEglSetupShader(struct rdp_egl *egl,
+                  const GLchar *vsource,
+                  const GLchar *fsource,
+                  int index)
+{
+    GLint vlength;
+    GLint flength;
+    GLint linked;
+    GLint compiled;
+    GLuint vs;
+    GLuint fs;
+    GLuint pro;
+    GLint tex_loc;
+    GLint tex_size_loc;
+
+    vs = glCreateShader(GL_VERTEX_SHADER);
+    fs = glCreateShader(GL_FRAGMENT_SHADER);
+    egl->vertex_shader[index] = vs;
+    egl->fragment_shader[index] = fs;
+    vlength = strlen(vsource);
+    flength = strlen(fsource);
+    glShaderSource(vs, 1, &vsource, &vlength);
+    glShaderSource(fs, 1, &fsource, &flength);
+    glCompileShader(vs);
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled);
+    LLOGLN(0, ("rdpEglSetupShader: vertex_shader compiled %d", compiled));
+    if (!compiled)
+    {
+        return 1;
+    }
+    glCompileShader(fs);
+    glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled);
+    LLOGLN(0, ("rdpEglSetupShader: fragment_shader compiled %d", compiled));
+    if (!compiled)
+    {
+        return 1;
+    }
+    pro = glCreateProgram();
+    egl->program[index] = pro;
+    glAttachShader(pro, vs);
+    glAttachShader(pro, fs);
+    glLinkProgram(pro);
+    glGetProgramiv(pro, GL_LINK_STATUS, &linked);
+    LLOGLN(0, ("rdpEglSetupShader: linked %d", linked));
+    if (!linked)
+    {
+        return 1;
+    }
+    tex_loc = glGetUniformLocation(pro, "tex");
+    egl->tex_loc[index] = tex_loc;
+    tex_size_loc = glGetUniformLocation(pro, "tex_size");
+    egl->tex_size_loc[index] = tex_size_loc;
+    LLOGLN(0, ("rdpEglSetupShader: copy_tex_loc %d copy_tex_size_loc %d",
+           tex_loc, tex_size_loc));
+    return 0;
+}
+
+/******************************************************************************/
 void *
 rdpEglCreate(ScreenPtr screen)
 {
     struct rdp_egl *egl;
     GLint old_vertex_array;
-    const GLchar *vsource;
-    const GLchar *fsource;
-    GLint vlength;
-    GLint flength;
-    GLint linked;
-    GLint compiled;
 
     egl = g_new0(struct rdp_egl, 1);
     /* create vertex array */
@@ -274,105 +331,17 @@ rdpEglCreate(ScreenPtr screen)
     glBindVertexArray(old_vertex_array);
     glGenFramebuffers(1, egl->fb);
     /* create copy shader */
-    vsource = g_vs;
-    fsource = g_fs_copy;
-    egl->vertex_shader[0] = glCreateShader(GL_VERTEX_SHADER);
-    egl->fragment_shader[0] = glCreateShader(GL_FRAGMENT_SHADER);
-    vlength = strlen(vsource);
-    flength = strlen(fsource);
-    glShaderSource(egl->vertex_shader[0], 1, &vsource, &vlength);
-    glShaderSource(egl->fragment_shader[0], 1, &fsource, &flength);
-    glCompileShader(egl->vertex_shader[0]);
-    glGetShaderiv(egl->vertex_shader[0], GL_COMPILE_STATUS, &compiled);
-    LLOGLN(0, ("rdpEglCreate: vertex_shader compiled %d", compiled));
-    glCompileShader(egl->fragment_shader[0]);
-    glGetShaderiv(egl->fragment_shader[0], GL_COMPILE_STATUS, &compiled);
-    LLOGLN(0, ("rdpEglCreate: fragment_shader compiled %d", compiled));
-    egl->program[0] = glCreateProgram();
-    glAttachShader(egl->program[0], egl->vertex_shader[0]);
-    glAttachShader(egl->program[0], egl->fragment_shader[0]);
-    glLinkProgram(egl->program[0]);
-    glGetProgramiv(egl->program[0], GL_LINK_STATUS, &linked);
-    LLOGLN(0, ("rdpEglCreate: linked %d", linked));
-    egl->tex_loc[0] = glGetUniformLocation(egl->program[0], "tex");
-    egl->tex_size_loc[0] = glGetUniformLocation(egl->program[0], "tex_size");
-    LLOGLN(0, ("rdpEglCreate: copy_tex_loc %d copy_tex_size_loc %d",
-           egl->tex_loc[0], egl->tex_size_loc[0]));
+    rdpEglSetupShader(egl, g_vs, g_fs_copy,
+                      SHADER_INDEX_COPY);
     /* create yuv shader */
-    vsource = g_vs;
-    fsource = g_fs_rfx_rgb_to_yuv;
-    egl->vertex_shader[1] = glCreateShader(GL_VERTEX_SHADER);
-    egl->fragment_shader[1] = glCreateShader(GL_FRAGMENT_SHADER);
-    vlength = strlen(vsource);
-    flength = strlen(fsource);
-    glShaderSource(egl->vertex_shader[1], 1, &vsource, &vlength);
-    glShaderSource(egl->fragment_shader[1], 1, &fsource, &flength);
-    glCompileShader(egl->vertex_shader[1]);
-    glGetShaderiv(egl->vertex_shader[1], GL_COMPILE_STATUS, &compiled);
-    LLOGLN(0, ("rdpEglCreate: vertex_shader compiled %d", compiled));
-    glCompileShader(egl->fragment_shader[1]);
-    glGetShaderiv(egl->fragment_shader[1], GL_COMPILE_STATUS, &compiled);
-    LLOGLN(0, ("rdpEglCreate: fragment_shader compiled %d", compiled));
-    egl->program[1] = glCreateProgram();
-    glAttachShader(egl->program[1], egl->vertex_shader[1]);
-    glAttachShader(egl->program[1], egl->fragment_shader[1]);
-    glLinkProgram(egl->program[1]);
-    glGetProgramiv(egl->program[1], GL_LINK_STATUS, &linked);
-    LLOGLN(0, ("rdpEglCreate: linked %d", linked));
-    egl->tex_loc[1] = glGetUniformLocation(egl->program[1], "tex");
-    egl->tex_size_loc[1] = glGetUniformLocation(egl->program[1], "tex_size");
-    LLOGLN(0, ("rdpEglCreate: yuv_tex_loc %d yuv_tex_size_loc %d",
-           egl->tex_loc[1], egl->tex_size_loc[1]));
+    rdpEglSetupShader(egl, g_vs, g_fs_rfx_rgb_to_yuv,
+                      SHADER_INDEX_RGB2YUV);
     /* create yuvlp shader */
-    vsource = g_vs;
-    fsource = g_fs_rfx_yuv_to_yuvlp;
-    egl->vertex_shader[2] = glCreateShader(GL_VERTEX_SHADER);
-    egl->fragment_shader[2] = glCreateShader(GL_FRAGMENT_SHADER);
-    vlength = strlen(vsource);
-    flength = strlen(fsource);
-    glShaderSource(egl->vertex_shader[2], 1, &vsource, &vlength);
-    glShaderSource(egl->fragment_shader[2], 1, &fsource, &flength);
-    glCompileShader(egl->vertex_shader[2]);
-    glGetShaderiv(egl->vertex_shader[2], GL_COMPILE_STATUS, &compiled);
-    LLOGLN(0, ("rdpEglCreate: vertex_shader compiled %d", compiled));
-    glCompileShader(egl->fragment_shader[2]);
-    glGetShaderiv(egl->fragment_shader[2], GL_COMPILE_STATUS, &compiled);
-    LLOGLN(0, ("rdpEglCreate: fragment_shader compiled %d", compiled));
-    egl->program[2] = glCreateProgram();
-    glAttachShader(egl->program[2], egl->vertex_shader[2]);
-    glAttachShader(egl->program[2], egl->fragment_shader[2]);
-    glLinkProgram(egl->program[2]);
-    glGetProgramiv(egl->program[2], GL_LINK_STATUS, &linked);
-    LLOGLN(0, ("rdpEglCreate: linked %d", linked));
-    egl->tex_loc[2] = glGetUniformLocation(egl->program[2], "tex");
-    egl->tex_size_loc[2] = glGetUniformLocation(egl->program[2], "tex_size");
-    LLOGLN(0, ("rdpEglCreate: yuvlp_tex_loc %d yuvlp_tex_size_loc %d",
-           egl->tex_loc[2], egl->tex_size_loc[2]));
+    rdpEglSetupShader(egl, g_vs, g_fs_rfx_yuv_to_yuvlp,
+                      SHADER_INDEX_YUV2YUVLP);
     /* create crc shader */
-    vsource = g_vs;
-    fsource = g_fs_rfx_crc;
-    egl->vertex_shader[3] = glCreateShader(GL_VERTEX_SHADER);
-    egl->fragment_shader[3] = glCreateShader(GL_FRAGMENT_SHADER);
-    vlength = strlen(vsource);
-    flength = strlen(fsource);
-    glShaderSource(egl->vertex_shader[3], 1, &vsource, &vlength);
-    glShaderSource(egl->fragment_shader[3], 1, &fsource, &flength);
-    glCompileShader(egl->vertex_shader[3]);
-    glGetShaderiv(egl->vertex_shader[3], GL_COMPILE_STATUS, &compiled);
-    LLOGLN(0, ("rdpEglCreate: vertex_shader compiled %d", compiled));
-    glCompileShader(egl->fragment_shader[3]);
-    glGetShaderiv(egl->fragment_shader[3], GL_COMPILE_STATUS, &compiled);
-    LLOGLN(0, ("rdpEglCreate: fragment_shader compiled %d", compiled));
-    egl->program[3] = glCreateProgram();
-    glAttachShader(egl->program[3], egl->vertex_shader[3]);
-    glAttachShader(egl->program[3], egl->fragment_shader[3]);
-    glLinkProgram(egl->program[3]);
-    glGetProgramiv(egl->program[3], GL_LINK_STATUS, &linked);
-    LLOGLN(0, ("rdpEglCreate: linked %d", linked));
-    egl->tex_loc[3] = glGetUniformLocation(egl->program[3], "tex");
-    egl->tex_size_loc[3] = glGetUniformLocation(egl->program[3], "tex_size");
-    LLOGLN(0, ("rdpEglCreate: crc_tex_loc %d crc_tex_size_loc %d",
-           egl->tex_loc[3], egl->tex_size_loc[3]));
+    rdpEglSetupShader(egl, g_vs, g_fs_rfx_crc,
+                      SHADER_INDEX_CRC);
     return egl;
 }
 
@@ -410,10 +379,10 @@ rdpEglRfxRgbToYuv(struct rdp_egl *egl, GLuint src_tex, GLuint dst_tex,
         LLOGLN(0, ("rdpEglRfxRgbToYuv: glCheckFramebufferStatus error"));
     }
     glViewport(0, 0, width, height);
-    glUseProgram(egl->program[1]);
+    glUseProgram(egl->program[SHADER_INDEX_RGB2YUV]);
     glBindVertexArray(egl->quad_vao[0]);
-    glUniform1i(egl->tex_loc[1], 0);
-    glUniform2f(egl->tex_size_loc[1], width, height);
+    glUniform1i(egl->tex_loc[SHADER_INDEX_RGB2YUV], 0);
+    glUniform2f(egl->tex_size_loc[SHADER_INDEX_RGB2YUV], width, height);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -441,10 +410,10 @@ rdpEglRfxYuvToYuvlp(struct rdp_egl *egl, GLuint src_tex, GLuint dst_tex,
         LLOGLN(0, ("rdpEglRfxYuvToYuvlp: glCheckFramebufferStatus error"));
     }
     glViewport(0, 0, width, height);
-    glUseProgram(egl->program[2]);
+    glUseProgram(egl->program[SHADER_INDEX_YUV2YUVLP]);
     glBindVertexArray(egl->quad_vao[0]);
-    glUniform1i(egl->tex_loc[2], 0);
-    glUniform2f(egl->tex_size_loc[2], width, height);
+    glUniform1i(egl->tex_loc[SHADER_INDEX_YUV2YUVLP], 0);
+    glUniform2f(egl->tex_size_loc[SHADER_INDEX_YUV2YUVLP], width, height);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -476,10 +445,10 @@ rdpEglRfxCrc(struct rdp_egl *egl, GLuint src_tex, GLuint dst_tex,
         LLOGLN(0, ("rdpEglRfxCrc: glCheckFramebufferStatus error"));
     }
     glViewport(0, 0, w_div_64, h_div_64);
-    glUseProgram(egl->program[3]);
+    glUseProgram(egl->program[SHADER_INDEX_CRC]);
     glBindVertexArray(egl->quad_vao[0]);
-    glUniform1i(egl->tex_loc[3], 0);
-    glUniform2f(egl->tex_size_loc[3], width, height);
+    glUniform1i(egl->tex_loc[SHADER_INDEX_CRC], 0);
+    glUniform2f(egl->tex_size_loc[SHADER_INDEX_CRC], width, height);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glReadPixels(0, 0, w_div_64, h_div_64, GL_BGRA,
                  GL_UNSIGNED_INT_8_8_8_8_REV, crcs);
