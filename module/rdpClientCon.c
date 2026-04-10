@@ -1012,6 +1012,8 @@ rdpClientConResizeAllMemoryAreas(rdpPtr dev, rdpClientCon *clientCon)
         clientCon->shmemstatus
             = convertSharedMemoryStatusToActive(shmemstatus);
     }
+    LOG(LOG_LEVEL_INFO, "rdpClientConResizeAllMemoryAreas: msFrameInterval %d",
+        dev->msFrameInterval);
 }
 
 /******************************************************************************/
@@ -3236,6 +3238,7 @@ rdpClientConSendPaintRectShmFd(rdpPtr dev, rdpClientCon *clientCon,
     }
 
     rdpClientConEndUpdate(dev, clientCon);
+    clientCon->shm_index = 1 - clientCon->shm_index;
 
     return 0;
 }
@@ -3329,10 +3332,12 @@ rdpDeferredUpdateCallback(OsTimerPtr timer, CARD32 now, pointer arg)
             clientCon->shmemstatus, clientCon->rect_id, clientCon->rect_id_ack);
         return 0;
     }
-    if ((clientCon->rect_id > clientCon->rect_id_ack) ||
+    if ((clientCon->rect_id > clientCon->rect_id_ack + 1) ||
         /* do not allow captures until we have the client_info */
         clientCon->client_info.size == 0)
     {
+        LOG(LOG_LEVEL_TRACE, "rdpDeferredUpdateCallback: rect_id %d rect_id_ack %d",
+            clientCon->rect_id, clientCon->rect_id_ack );
         return 0;
     }
     clientCon->lastUpdateTime = now;
@@ -3358,7 +3363,7 @@ rdpDeferredUpdateCallback(OsTimerPtr timer, CARD32 now, pointer arg)
         while (monitor_index < monitor_count)
         {
             // Did we get anything from the last monitor?
-            if (clientCon->rect_id > clientCon->rect_id_ack)
+            if (clientCon->rect_id > clientCon->rect_id_ack + 1)
             {
                 LOG(LOG_LEVEL_TRACE,
                     "rdpDeferredUpdateCallback: reschedule rect_id %d "
@@ -3479,7 +3484,6 @@ rdpClientConGetScreenImageRect(rdpPtr dev, rdpClientCon *clientCon,
     int shm_index;
 
     shm_index = clientCon->shm_index;
-    clientCon->shm_index = 1 - shm_index;
     id->left = 0;
     id->top = 0;
     id->width = dev->width;
