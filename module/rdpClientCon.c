@@ -229,7 +229,8 @@ rdpClientConGotConnection(ScreenPtr pScreen, rdpPtr dev)
     clientCon->shmemstatus = SHM_UNINITIALIZED;
     clientCon->updateRetries = 0;
     clientCon->dev = dev;
-    clientCon->shmemfd = -1;
+    clientCon->shmemfd[0] = -1;
+    clientCon->shmemfd[1] = -1;
     dev->last_event_time_ms = GetTimeInMillis();
     dev->do_dirty_ons = 1;
 
@@ -491,10 +492,13 @@ rdpClientConDisconnect(rdpPtr dev, rdpClientCon *clientCon)
     }
     free_stream(clientCon->out_s);
     free_stream(clientCon->in_s);
-    if (clientCon->shmemptr != NULL)
+    if (clientCon->shmemptr[0] != NULL)
     {
-        g_free_unmap_fd(clientCon->shmemptr,
-                        clientCon->shmemfd,
+        g_free_unmap_fd(clientCon->shmemptr[0],
+                        clientCon->shmemfd[0],
+                        clientCon->shmem_bytes);
+        g_free_unmap_fd(clientCon->shmemptr[1],
+                        clientCon->shmemfd[1],
                         clientCon->shmem_bytes);
     }
     if (clientCon->use_accel_assist)
@@ -790,20 +794,25 @@ rdpClientConAllocateSharedMemory(rdpClientCon *clientCon, int bytes)
     void *shmemptr;
     int shmemfd;
 
-    if (clientCon->shmemptr != NULL && clientCon->shmem_bytes == bytes)
+    if (clientCon->shmemptr[0] != NULL && clientCon->shmem_bytes == bytes)
     {
         LOG(LOG_LEVEL_INFO,
             "rdpClientConAllocateSharedMemory: reusing shmemfd %d",
-            clientCon->shmemfd);
+            clientCon->shmemfd[0]);
         return;
     }
-    if (clientCon->shmemptr != NULL)
+    if (clientCon->shmemptr[0] != NULL)
     {
-        g_free_unmap_fd(clientCon->shmemptr,
-                        clientCon->shmemfd,
+        g_free_unmap_fd(clientCon->shmemptr[0],
+                        clientCon->shmemfd[0],
                         clientCon->shmem_bytes);
-        clientCon->shmemptr = NULL;
-        clientCon->shmemfd = -1;
+        clientCon->shmemptr[0] = NULL;
+        clientCon->shmemfd[0] = -1;
+        g_free_unmap_fd(clientCon->shmemptr[1],
+                        clientCon->shmemfd[1],
+                        clientCon->shmem_bytes);
+        clientCon->shmemptr[0] = NULL;
+        clientCon->shmemfd[0] = -1;
         clientCon->shmem_bytes = 0;
     }
     if (g_alloc_shm_map_fd(&shmemptr, &shmemfd, bytes) != 0)
@@ -811,13 +820,25 @@ rdpClientConAllocateSharedMemory(rdpClientCon *clientCon, int bytes)
         FatalError("rdpClientConAllocateSharedMemory:"
                    " g_alloc_shm_map_fd failed");
     }
-    clientCon->shmemptr = shmemptr;
-    clientCon->shmemfd = shmemfd;
+    clientCon->shmemptr[0] = shmemptr;
+    clientCon->shmemfd[0] = shmemfd;
+    if (g_alloc_shm_map_fd(&shmemptr, &shmemfd, bytes) != 0)
+    {
+        FatalError("rdpClientConAllocateSharedMemory:"
+                   " g_alloc_shm_map_fd failed");
+    }
+    clientCon->shmemptr[1] = shmemptr;
+    clientCon->shmemfd[1] = shmemfd;
     clientCon->shmem_bytes = bytes;
     LOG(LOG_LEVEL_INFO,
         "rdpClientConAllocateSharedMemory: shmemfd %d shmemptr %p "
         "bytes %d",
-        clientCon->shmemfd, clientCon->shmemptr,
+        clientCon->shmemfd[0], clientCon->shmemptr[0],
+        clientCon->shmem_bytes);
+    LOG(LOG_LEVEL_INFO,
+        "rdpClientConAllocateSharedMemory: shmemfd %d shmemptr %p "
+        "bytes %d",
+        clientCon->shmemfd[1], clientCon->shmemptr[1],
         clientCon->shmem_bytes);
 }
 
@@ -3455,6 +3476,10 @@ void
 rdpClientConGetScreenImageRect(rdpPtr dev, rdpClientCon *clientCon,
                                struct image_data *id)
 {
+    int shm_index;
+
+    shm_index = clientCon->shm_index;
+    clientCon->shm_index = 1 - shm_index;
     id->left = 0;
     id->top = 0;
     id->width = dev->width;
@@ -3464,8 +3489,8 @@ rdpClientConGetScreenImageRect(rdpPtr dev, rdpClientCon *clientCon,
     id->lineBytes = dev->paddedWidthInBytes;
     id->flags = 0;
     id->pixels = dev->pfbMemory;
-    id->shmem_pixels = clientCon->shmemptr;
-    id->shmem_fd = clientCon->shmemfd;
+    id->shmem_pixels = clientCon->shmemptr[shm_index];
+    id->shmem_fd = clientCon->shmemfd[shm_index];
     id->shmem_bytes = clientCon->shmem_bytes;
     id->shmem_offset = 0;
     id->shmem_lineBytes = clientCon->shmem_lineBytes;

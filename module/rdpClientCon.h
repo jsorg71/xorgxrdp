@@ -106,8 +106,9 @@ struct _rdpClientCon
 
     struct xup_client_info client_info;
 
-    uint8_t *shmemptr;
-    int shmemfd;
+    int shm_index; /* 0 or 1 */
+    uint8_t *shmemptr[2];
+    int shmemfd[2];
     int shmem_bytes;
     int shmem_lineBytes;
     RegionPtr shmRegion;
