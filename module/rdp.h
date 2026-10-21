@@ -214,6 +214,12 @@ typedef int (*copy_box_dst2_proc)(const uint8_t *s8, int src_stride,
                                   uint8_t *d8_y, int dst_stride_y,
                                   uint8_t *d8_uv, int dst_stride_uv,
                                   int width, int height);
+/* copy_box_proc but 3 dest */
+typedef int (*copy_box_dst3_proc)(const uint8_t *s8, int src_stride,
+                                  uint8_t *d8_y, int dst_stride_y,
+                                  uint8_t *d8_u, int dst_stride_u,
+                                  uint8_t *d8_v, int dst_stride_v,
+                                  int width, int height);
 
 /* move this to common header */
 struct _rdpRec
@@ -310,6 +316,8 @@ struct _rdpRec
     copy_box_proc a8r8g8b8_to_a8b8g8r8_box;
     copy_box_dst2_proc a8r8g8b8_to_nv12_box;
     copy_box_dst2_proc a8r8g8b8_to_nv12_709fr_box;
+    copy_box_dst3_proc a8r8g8b8_to_i420_box;
+    copy_box_dst3_proc a8r8g8b8_to_i420_709fr_box;
     copy_box_proc a8r8g8b8_to_yuvalp_box;
 
     /* multimon */

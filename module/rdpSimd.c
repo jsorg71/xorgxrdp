@@ -148,6 +148,99 @@ a8r8g8b8_to_nv12_709fr_box_amd64_sse2_wrap(const uint8_t *s8, int src_stride,
     return 0;
 }
 
+/******************************************************************************/
+static int
+a8r8g8b8_to_i420_box_amd64_sse2_wrap(const uint8_t *s8, int src_stride,
+                                     uint8_t *d8_y, int dst_stride_y,
+                                     uint8_t *d8_u, int dst_stride_u,
+                                     uint8_t *d8_v, int dst_stride_v,
+                                     int width, int height)
+{
+    int aligned_width;
+    int left_over_width;
+    int error;
+
+    aligned_width = width & ~7;
+    left_over_width = width - aligned_width;
+    if (height > 0)
+    {
+        if (aligned_width > 0)
+        {
+            error = a8r8g8b8_to_i420_box_amd64_sse2(s8, src_stride,
+                                                    d8_y, dst_stride_y,
+                                                    d8_u, dst_stride_u,
+                                                    d8_v, dst_stride_v,
+                                                    aligned_width, height);
+            if (error != 0)
+            {
+                return error;
+            }
+        }
+        if (left_over_width > 0)
+        {
+            error = a8r8g8b8_to_i420_box(s8 + aligned_width * 4, src_stride,
+                                         d8_y + aligned_width, dst_stride_y,
+                                         d8_u + aligned_width, dst_stride_u,
+                                         d8_v + aligned_width, dst_stride_v,
+                                         left_over_width, height);
+            if (error != 0)
+            {
+                return error;
+            }
+        }
+    }
+    return 0;
+}
+
+/******************************************************************************/
+static int
+a8r8g8b8_to_i420_709fr_box_amd64_sse2_wrap(const uint8_t *s8, int src_stride,
+                                           uint8_t *d8_y, int dst_stride_y,
+                                           uint8_t *d8_u, int dst_stride_u,
+                                           uint8_t *d8_v, int dst_stride_v,
+                                           int width, int height)
+{
+    int aligned_width;
+    int left_over_width;
+    int error;
+
+    aligned_width = width & ~7;
+    left_over_width = width - aligned_width;
+    if (height > 0)
+    {
+        if (aligned_width > 0)
+        {
+            error = a8r8g8b8_to_i420_709fr_box_amd64_sse2(s8, src_stride,
+                                                          d8_y, dst_stride_y,
+                                                          d8_u, dst_stride_u,
+                                                          d8_v, dst_stride_v,
+                                                          aligned_width,
+                                                          height);
+            if (error != 0)
+            {
+                return error;
+            }
+        }
+        if (left_over_width > 0)
+        {
+            error = a8r8g8b8_to_i420_709fr_box(s8 + aligned_width * 4,
+                                               src_stride,
+                                               d8_y + aligned_width,
+                                               dst_stride_y,
+                                               d8_u + aligned_width,
+                                               dst_stride_u,
+                                               d8_v + aligned_width,
+                                               dst_stride_v,
+                                               left_over_width, height);
+            if (error != 0)
+            {
+                return error;
+            }
+        }
+    }
+    return 0;
+}
+
 /*****************************************************************************/
 int
 a8r8g8b8_to_yuvalp_box_amd64_sse2_wrap(const uint8_t *s8, int src_stride,
@@ -273,6 +366,97 @@ a8r8g8b8_to_nv12_709fr_box_x86_sse2_wrap(const uint8_t *s8, int src_stride,
     return 0;
 }
 
+/******************************************************************************/
+static int
+a8r8g8b8_to_i420_box_x86_sse2_wrap(const uint8_t *s8, int src_stride,
+                                   uint8_t *d8_y, int dst_stride_y,
+                                   uint8_t *d8_u, int dst_stride_u,
+                                   uint8_t *d8_v, int dst_stride_v,
+                                   int width, int height)
+{
+    int aligned_width;
+    int left_over_width;
+    int error;
+
+    aligned_width = width & ~7;
+    left_over_width = width - aligned_width;
+    if (height > 0)
+    {
+        if (aligned_width > 0)
+        {
+            error = a8r8g8b8_to_i420_box_x86_sse2(s8, src_stride,
+                                                  d8_y, dst_stride_y,
+                                                  d8_u, dst_stride_u,
+                                                  d8_v, dst_stride_v,
+                                                  aligned_width, height);
+            if (error != 0)
+            {
+                return error;
+            }
+        }
+        if (left_over_width > 0)
+        {
+            error = a8r8g8b8_to_i420_box(s8 + aligned_width * 4, src_stride,
+                                         d8_y + aligned_width, dst_stride_y,
+                                         d8_u + aligned_width, dst_stride_u,
+                                         d8_v + aligned_width, dst_stride_v,
+                                         left_over_width, height);
+            if (error != 0)
+            {
+                return error;
+            }
+        }
+    }
+    return 0;
+}
+
+/******************************************************************************/
+static int
+a8r8g8b8_to_i420_709fr_box_x86_sse2_wrap(const uint8_t *s8, int src_stride,
+                                         uint8_t *d8_y, int dst_stride_y,
+                                         uint8_t *d8_u, int dst_stride_u,
+                                         uint8_t *d8_v, int dst_stride_v,
+                                         int width, int height)
+{
+    int aligned_width;
+    int left_over_width;
+    int error;
+
+    aligned_width = width & ~7;
+    left_over_width = width - aligned_width;
+    if (height > 0)
+    {
+        if (aligned_width > 0)
+        {
+            error = a8r8g8b8_to_i420_709fr_box_x86_sse2(s8, src_stride,
+                                                        d8_y, dst_stride_y,
+                                                        d8_u, dst_stride_u,
+                                                        d8_v, dst_stride_v,
+                                                        aligned_width, height);
+            if (error != 0)
+            {
+                return error;
+            }
+        }
+        if (left_over_width > 0)
+        {
+            error = a8r8g8b8_to_i420_709fr_box(s8 + aligned_width * 4,
+                                               src_stride,
+                                               d8_y + aligned_width,
+                                               dst_stride_y,
+                                               d8_u + aligned_width,
+                                               d8_v + aligned_width,
+                                               dst_stride_uv,
+                                               left_over_width, height);
+            if (error != 0)
+            {
+                return error;
+            }
+        }
+    }
+    return 0;
+}
+
 /*****************************************************************************/
 int
 a8r8g8b8_to_yuvalp_box_x86_sse2_wrap(const uint8_t *s8, int src_stride,
@@ -330,6 +514,8 @@ rdpSimdInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
     dev->a8r8g8b8_to_a8b8g8r8_box = a8r8g8b8_to_a8b8g8r8_box;
     dev->a8r8g8b8_to_nv12_box = a8r8g8b8_to_nv12_box;
     dev->a8r8g8b8_to_nv12_709fr_box = a8r8g8b8_to_nv12_709fr_box;
+    dev->a8r8g8b8_to_i420_box = a8r8g8b8_to_i420_box;
+    dev->a8r8g8b8_to_i420_709fr_box = a8r8g8b8_to_i420_709fr_box;
     dev->a8r8g8b8_to_yuvalp_box = a8r8g8b8_to_yuvalp_box;
 #if SIMD_USE_ACCEL
     if (g_simd_use_accel)
@@ -348,6 +534,8 @@ rdpSimdInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
             dev->a8r8g8b8_to_a8b8g8r8_box = a8r8g8b8_to_a8b8g8r8_box_amd64_sse2;
             dev->a8r8g8b8_to_nv12_box = a8r8g8b8_to_nv12_box_amd64_sse2_wrap;
             dev->a8r8g8b8_to_nv12_709fr_box = a8r8g8b8_to_nv12_709fr_box_amd64_sse2_wrap;
+            dev->a8r8g8b8_to_i420_box = a8r8g8b8_to_i420_box_amd64_sse2_wrap;
+            dev->a8r8g8b8_to_i420_709fr_box = a8r8g8b8_to_i420_709fr_box_amd64_sse2_wrap;
             dev->a8r8g8b8_to_yuvalp_box = a8r8g8b8_to_yuvalp_box_amd64_sse2_wrap;
             LOG(LOG_LEVEL_INFO, "rdpSimdInit: sse2 amd64 yuv functions assigned");
         }
@@ -365,6 +553,8 @@ rdpSimdInit(ScreenPtr pScreen, ScrnInfoPtr pScrn)
             dev->a8r8g8b8_to_a8b8g8r8_box = a8r8g8b8_to_a8b8g8r8_box_x86_sse2;
             dev->a8r8g8b8_to_nv12_box = a8r8g8b8_to_nv12_box_x86_sse2_wrap;
             dev->a8r8g8b8_to_nv12_709fr_box = a8r8g8b8_to_nv12_709fr_box_x86_sse2_wrap;
+            dev->a8r8g8b8_to_i420_box = a8r8g8b8_to_i420_box_x86_sse2_wrap;
+            dev->a8r8g8b8_to_i420_709fr_box = a8r8g8b8_to_i420_709fr_box_x86_sse2_wrap;
             dev->a8r8g8b8_to_yuvalp_box = a8r8g8b8_to_yuvalp_box_x86_sse2_wrap;
             LOG(LOG_LEVEL_INFO, "rdpSimdInit: sse2 x86 yuv functions assigned");
         }

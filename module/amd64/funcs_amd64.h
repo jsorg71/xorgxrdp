@@ -49,6 +49,18 @@ a8r8g8b8_to_nv12_709fr_box_amd64_sse2(const uint8_t *s8, int src_stride,
                                       uint8_t *d8_uv, int dst_stride_uv,
                                       int width, int height);
 int
+a8r8g8b8_to_i420_box_amd64_sse2(const uint8_t *s8, int src_stride,
+                                uint8_t *d8_y, int dst_stride_y,
+                                uint8_t *d8_u, int dst_stride_u,
+                                uint8_t *d8_v, int dst_stride_v,
+                                int width, int height);
+int
+a8r8g8b8_to_i420_709fr_box_amd64_sse2(const uint8_t *s8, int src_stride,
+                                      uint8_t *d8_y, int dst_stride_y,
+                                      uint8_t *d8_u, int dst_stride_u,
+                                      uint8_t *d8_v, int dst_stride_v,
+                                      int width, int height);
+int
 a8r8g8b8_to_yuvalp_box_amd64_sse2(const uint8_t *s8, int src_stride,
                                   uint8_t *d8, int dst_stride,
                                   int width, int height);

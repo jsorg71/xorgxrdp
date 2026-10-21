@@ -647,10 +647,211 @@ a8r8g8b8_to_nv12_709fr_box(const uint8_t *s8, int src_stride,
 }
 
 /******************************************************************************/
+int
+a8r8g8b8_to_i420_box(const uint8_t *s8, int src_stride,
+                     uint8_t *d8_y, int dst_stride_y,
+                     uint8_t *d8_u, int dst_stride_u,
+                     uint8_t *d8_v, int dst_stride_v,
+                     int width, int height)
+{
+    int index;
+    int jndex;
+    int R;
+    int G;
+    int B;
+    int Y;
+    int U;
+    int V;
+    int U_sum;
+    int V_sum;
+    int pixel;
+    const uint32_t *s32a;
+    const uint32_t *s32b;
+    uint8_t *d8ya;
+    uint8_t *d8yb;
+    uint8_t *d8u;
+    uint8_t *d8v;
+
+    for (jndex = 0; jndex < height; jndex += 2)
+    {
+        s32a = (const uint32_t *) (s8 + src_stride * jndex);
+        s32b = (const uint32_t *) (s8 + src_stride * (jndex + 1));
+        d8ya = d8_y + dst_stride_y * jndex;
+        d8yb = d8_y + dst_stride_y * (jndex + 1);
+        d8u = d8_u + dst_stride_u * (jndex / 2);
+        d8v = d8_v + dst_stride_v * (jndex / 2);
+        for (index = 0; index < width; index += 2)
+        {
+            U_sum = 0;
+            V_sum = 0;
+
+            pixel = s32a[0];
+            s32a++;
+            R = (pixel >> 16) & 0xff;
+            G = (pixel >>  8) & 0xff;
+            B = (pixel >>  0) & 0xff;
+            Y = (( 66 * R + 129 * G +  25 * B + 128) >> 8) +  16;
+            U = ((-38 * R -  74 * G + 112 * B + 128) >> 8) + 128;
+            V = ((112 * R -  94 * G -  18 * B + 128) >> 8) + 128;
+            d8ya[0] = RDPCLAMP(Y, 0, 255);
+            d8ya++;
+            U_sum += RDPCLAMP(U, 0, 255);
+            V_sum += RDPCLAMP(V, 0, 255);
+
+            pixel = s32a[0];
+            s32a++;
+            R = (pixel >> 16) & 0xff;
+            G = (pixel >>  8) & 0xff;
+            B = (pixel >>  0) & 0xff;
+            Y = (( 66 * R + 129 * G +  25 * B + 128) >> 8) +  16;
+            U = ((-38 * R -  74 * G + 112 * B + 128) >> 8) + 128;
+            V = ((112 * R -  94 * G -  18 * B + 128) >> 8) + 128;
+            d8ya[0] = RDPCLAMP(Y, 0, 255);
+            d8ya++;
+            U_sum += RDPCLAMP(U, 0, 255);
+            V_sum += RDPCLAMP(V, 0, 255);
+
+            pixel = s32b[0];
+            s32b++;
+            R = (pixel >> 16) & 0xff;
+            G = (pixel >>  8) & 0xff;
+            B = (pixel >>  0) & 0xff;
+            Y = (( 66 * R + 129 * G +  25 * B + 128) >> 8) +  16;
+            U = ((-38 * R -  74 * G + 112 * B + 128) >> 8) + 128;
+            V = ((112 * R -  94 * G -  18 * B + 128) >> 8) + 128;
+            d8yb[0] = RDPCLAMP(Y, 0, 255);
+            d8yb++;
+            U_sum += RDPCLAMP(U, 0, 255);
+            V_sum += RDPCLAMP(V, 0, 255);
+
+            pixel = s32b[0];
+            s32b++;
+            R = (pixel >> 16) & 0xff;
+            G = (pixel >>  8) & 0xff;
+            B = (pixel >>  0) & 0xff;
+            Y = (( 66 * R + 129 * G +  25 * B + 128) >> 8) +  16;
+            U = ((-38 * R -  74 * G + 112 * B + 128) >> 8) + 128;
+            V = ((112 * R -  94 * G -  18 * B + 128) >> 8) + 128;
+            d8yb[0] = RDPCLAMP(Y, 0, 255);
+            d8yb++;
+            U_sum += RDPCLAMP(U, 0, 255);
+            V_sum += RDPCLAMP(V, 0, 255);
+
+            d8u[0] = (U_sum + 2) / 4;
+            d8u++;
+            d8v[0] = (V_sum + 2) / 4;
+            d8v++;
+        }
+    }
+    return 0;
+}
+
+/******************************************************************************/
+int
+a8r8g8b8_to_i420_709fr_box(const uint8_t *s8, int src_stride,
+                           uint8_t *d8_y, int dst_stride_y,
+                           uint8_t *d8_u, int dst_stride_u,
+                           uint8_t *d8_v, int dst_stride_v,
+                           int width, int height)
+{
+    int index;
+    int jndex;
+    int R;
+    int G;
+    int B;
+    int Y;
+    int U;
+    int V;
+    int U_sum;
+    int V_sum;
+    int pixel;
+    const uint32_t *s32a;
+    const uint32_t *s32b;
+    uint8_t *d8ya;
+    uint8_t *d8yb;
+    uint8_t *d8u;
+    uint8_t *d8v;
+
+    for (jndex = 0; jndex < height; jndex += 2)
+    {
+        s32a = (const uint32_t *) (s8 + src_stride * jndex);
+        s32b = (const uint32_t *) (s8 + src_stride * (jndex + 1));
+        d8ya = d8_y + dst_stride_y * jndex;
+        d8yb = d8_y + dst_stride_y * (jndex + 1);
+        d8u = d8_u + dst_stride_u * (jndex / 2);
+        d8v = d8_v + dst_stride_v * (jndex / 2);
+        for (index = 0; index < width; index += 2)
+        {
+            U_sum = 0;
+            V_sum = 0;
+
+            pixel = s32a[0];
+            s32a++;
+            R = (pixel >> 16) & 0xff;
+            G = (pixel >>  8) & 0xff;
+            B = (pixel >>  0) & 0xff;
+            Y =  ( 54 * R + 183 * G +  18 * B) >> 8;
+            U = ((-29 * R -  99 * G + 128 * B) >> 8) + 128;
+            V = ((128 * R - 116 * G -  12 * B) >> 8) + 128;
+            d8ya[0] = RDPCLAMP(Y, 0, 255);
+            d8ya++;
+            U_sum += RDPCLAMP(U, 0, 255);
+            V_sum += RDPCLAMP(V, 0, 255);
+
+            pixel = s32a[0];
+            s32a++;
+            R = (pixel >> 16) & 0xff;
+            G = (pixel >>  8) & 0xff;
+            B = (pixel >>  0) & 0xff;
+            Y =  ( 54 * R + 183 * G +  18 * B) >> 8;
+            U = ((-29 * R -  99 * G + 128 * B) >> 8) + 128;
+            V = ((128 * R - 116 * G -  12 * B) >> 8) + 128;
+            d8ya[0] = RDPCLAMP(Y, 0, 255);
+            d8ya++;
+            U_sum += RDPCLAMP(U, 0, 255);
+            V_sum += RDPCLAMP(V, 0, 255);
+
+            pixel = s32b[0];
+            s32b++;
+            R = (pixel >> 16) & 0xff;
+            G = (pixel >>  8) & 0xff;
+            B = (pixel >>  0) & 0xff;
+            Y =  ( 54 * R + 183 * G +  18 * B) >> 8;
+            U = ((-29 * R -  99 * G + 128 * B) >> 8) + 128;
+            V = ((128 * R - 116 * G -  12 * B) >> 8) + 128;
+            d8yb[0] = RDPCLAMP(Y, 0, 255);
+            d8yb++;
+            U_sum += RDPCLAMP(U, 0, 255);
+            V_sum += RDPCLAMP(V, 0, 255);
+
+            pixel = s32b[0];
+            s32b++;
+            R = (pixel >> 16) & 0xff;
+            G = (pixel >>  8) & 0xff;
+            B = (pixel >>  0) & 0xff;
+            Y =  ( 54 * R + 183 * G +  18 * B) >> 8;
+            U = ((-29 * R -  99 * G + 128 * B) >> 8) + 128;
+            V = ((128 * R - 116 * G -  12 * B) >> 8) + 128;
+            d8yb[0] = RDPCLAMP(Y, 0, 255);
+            d8yb++;
+            U_sum += RDPCLAMP(U, 0, 255);
+            V_sum += RDPCLAMP(V, 0, 255);
+
+            d8u[0] = (U_sum + 2) / 4;
+            d8u++;
+            d8v[0] = (V_sum + 2) / 4;
+            d8v++;
+        }
+    }
+    return 0;
+}
+
+/******************************************************************************/
 /* copy rects with no error checking */
 static int
 rdpCopyBox_a8r8g8b8_to_nv12(rdpClientCon *clientCon,
-                            const uint8_t *src, int src_stride, int srcx, int srcy,
+                            const uint8_t *src, int src_stride,
+                            int srcx, int srcy,
                             uint8_t *dst_y, int dst_stride_y,
                             uint8_t *dst_uv, int dst_stride_uv,
                             int dstx, int dsty,
@@ -716,6 +917,92 @@ rdpCopyBox_a8r8g8b8_to_nv12_709fr(rdpClientCon *clientCon,
         clientCon->dev->a8r8g8b8_to_nv12_709fr_box(s8, src_stride,
                                                    d8_y, dst_stride_y,
                                                    d8_uv, dst_stride_uv,
+                                                   width, height);
+    }
+    return 0;
+}
+
+/******************************************************************************/
+/* copy rects with no error checking */
+static int
+rdpCopyBox_a8r8g8b8_to_i420(rdpClientCon *clientCon,
+                            const uint8_t *src, int src_stride,
+                            int srcx, int srcy,
+                            uint8_t *dst_y, int dst_stride_y,
+                            uint8_t *dst_u, int dst_stride_u,
+                            uint8_t *dst_v, int dst_stride_v,
+                            int dstx, int dsty,
+                            BoxPtr rects, int num_rects)
+{
+    const uint8_t *s8;
+    uint8_t *d8_y;
+    uint8_t *d8_u;
+    uint8_t *d8_v;
+    int index;
+    int width;
+    int height;
+    BoxPtr box;
+
+    for (index = 0; index < num_rects; index++)
+    {
+        box = rects + index;
+        s8 = src + (box->y1 - srcy) * src_stride;
+        s8 += (box->x1 - srcx) * 4;
+        d8_y = dst_y + (box->y1 - dsty) * dst_stride_y;
+        d8_y += (box->x1 - dstx) * 1;
+        d8_u = dst_u + ((box->y1 - dsty) / 2) * dst_stride_u;
+        d8_u += (box->x1 - dstx) / 2;
+        d8_v = dst_v + ((box->y1 - dsty) / 2) * dst_stride_v;
+        d8_v += (box->x1 - dstx) / 2;
+        width = box->x2 - box->x1;
+        height = box->y2 - box->y1;
+        clientCon->dev->a8r8g8b8_to_i420_box(s8, src_stride,
+                                             d8_y, dst_stride_y,
+                                             d8_u, dst_stride_u,
+                                             d8_v, dst_stride_v,
+                                             width, height);
+    }
+    return 0;
+}
+
+/******************************************************************************/
+/* copy rects with no error checking */
+static int
+rdpCopyBox_a8r8g8b8_to_i420_709fr(rdpClientCon *clientCon,
+                                  const uint8_t *src, int src_stride,
+                                  int srcx, int srcy,
+                                  uint8_t *dst_y, int dst_stride_y,
+                                  uint8_t *dst_u, int dst_stride_u,
+                                  uint8_t *dst_v, int dst_stride_v,
+                                  int dstx, int dsty,
+                                  BoxPtr rects, int num_rects)
+{
+    const uint8_t *s8;
+    uint8_t *d8_y;
+    uint8_t *d8_u;
+    uint8_t *d8_v;
+    int index;
+    int width;
+    int height;
+    BoxPtr box;
+
+    for (index = 0; index < num_rects; index++)
+    {
+        box = rects + index;
+        s8 = src + (box->y1 - srcy) * src_stride;
+        s8 += (box->x1 - srcx) * 4;
+        d8_y = dst_y + (box->y1 - dsty) * dst_stride_y;
+        d8_y += (box->x1 - dstx) * 1;
+        d8_u = dst_u + ((box->y1 - dsty) / 2) * dst_stride_u;
+        d8_u += (box->x1 - dstx) / 2;
+        d8_v = dst_v + ((box->y1 - dsty) / 2) * dst_stride_v;
+        d8_v += (box->x1 - dstx) / 2;
+        width = box->x2 - box->x1;
+        height = box->y2 - box->y1;
+        clientCon->dev->a8r8g8b8_to_i420_709fr_box(s8, src_stride,
+                                                   d8_y, dst_stride_y,
+                                                   d8_u, dst_stride_u,
+                                                   d8_v, dst_stride_v,
                                                    width, height);
     }
     return 0;
@@ -1250,6 +1537,8 @@ rdpCaptureSufA2(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
     int num_rects;
     int index;
     uint8_t *dst_uv;
+    uint8_t *dst_u;
+    uint8_t *dst_v;
     Bool rv;
     const uint8_t *src;
     uint8_t *dst;
@@ -1341,6 +1630,20 @@ rdpCaptureSufA2(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
                                     0, 0,
                                     *out_rects, num_rects);
     }
+    else if (dst_format == XRDP_i420)
+    {
+        dst_u = dst;
+        dst_u += clientCon->cap_width * clientCon->cap_height;
+        dst_v = dst_u;
+        dst_v += (clientCon->cap_width / 2) * (clientCon->cap_height / 2);
+        rdpCopyBox_a8r8g8b8_to_i420(clientCon,
+                                    src, src_stride, 0, 0,
+                                    dst, dst_stride,
+                                    dst_u, dst_stride / 2,
+                                    dst_v, dst_stride / 2,
+                                    0, 0,
+                                    *out_rects, num_rects);
+    }
     else
     {
         LOG(LOG_LEVEL_INFO, "rdpCaptureSufA2: unimplemented color conversion");
@@ -1348,6 +1651,11 @@ rdpCaptureSufA2(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
 
     return rv;
 }
+
+/* TODO: remove this when xrdp adds it */
+#if !defined(XRDP_i420_709fr)
+#define XRDP_i420_709fr XRDP_PIXMAN_FORMAT(12, 70, 0, 0, 0, 0)
+#endif
 
 /******************************************************************************/
 /* make out_rects always multiple of 2 width and height */
@@ -1360,6 +1668,8 @@ rdpCaptureGfxA2(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
     int num_rects;
     int index;
     uint8_t *dst_uv;
+    uint8_t *dst_u;
+    uint8_t *dst_v;
     Bool rv;
     const uint8_t *src;
     uint8_t *dst;
@@ -1460,6 +1770,21 @@ rdpCaptureGfxA2(rdpClientCon *clientCon, RegionPtr in_reg, BoxPtr *out_rects,
                                           -id->left, -id->top,
                                           dst, dst_stride,
                                           dst_uv, dst_stride,
+                                          0, 0,
+                                          *out_rects, num_rects);
+    }
+    else if (dst_format == XRDP_i420_709fr)
+    {
+        dst_u = dst;
+        dst_u += id->width * id->height;
+        dst_v = dst_u;
+        dst_u += (id->width / 2) * (id->height / 2);
+        rdpCopyBox_a8r8g8b8_to_i420_709fr(clientCon,
+                                          src, src_stride,
+                                          -id->left, -id->top,
+                                          dst, dst_stride,
+                                          dst_u, dst_stride / 2,
+                                          dst_v, dst_stride / 2,
                                           0, 0,
                                           *out_rects, num_rects);
     }
